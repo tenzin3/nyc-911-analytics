@@ -82,9 +82,14 @@ nyc-911-analytics/
 │   ├── profile_mapper.py        # MapReduce profiling job (Hadoop Streaming)
 │   ├── profile_reducer.py
 │   └── run_profile.sh           # submits the job on Dataproc
+├── cleaning/
+│   ├── clean_mapper.py          # MapReduce cleaning job (Hadoop Streaming)
+│   ├── clean_reducer.py
+│   └── run_clean.sh             # submits the job on Dataproc
 ├── results/
-│   └── profiling/
-│       └── profile_results.tsv  # output of the profiling job
+│   ├── profiling/
+│   │   └── profile_results.tsv  # output of the profiling job
+│   └── cleaning/                # summary from the cleaning job
 ├── screenshots/                 # evidence of each step, run on Dataproc
 │   ├── ingestion/
 │   └── profiling/
@@ -185,7 +190,7 @@ There are 13,788,024 distinct event IDs; with the 448,212 extra rows from duplic
 
 - **Duplicate event IDs are not copies.** The repeated rows share the event, location, call type and incident time, but have different dispatch, arrival or closing times. They look like the same call being dispatched or closed more than once, so for counting calls each event ID should count once.
 - **37.6% of entries are not calls from the public.** 5,347,737 rows have radio codes starting with "75", which by their descriptions are entries officers create themselves: patrols, inspections and visits. The largest are "VISIBILITY PATROL: DIRECTED" (1,555,781), "STATION INSPECTION BY TRANSIT BUREAU PERSONNEL" (1,310,865), "TRAIN RUN/MOBILE ORDER MAINTENANCE SWEEP" (591,751) and "TRANSIT PATROL/INSPECTION BY NON-TRANSIT BUREAU PERSONNEL" (523,554). Patrol schedules don't respond to weather the way public calls do, so these need to be separated before measuring weather effects on 911 volume. (To be confirmed against the data dictionary.)
-- **Missing arrival times are expected.** 21.2% of entries have no arrival time, which fits entries where no unit was sent or arrived. The call itself still happened, so these rows stay.
+- **Missing arrival times don't mean no unit was sent.** 21.2% of entries have no arrival time. Checking January 2023, every one of those rows has a dispatch time, and 94% of them are public calls, not officer-initiated entries. Likely explanations are that the officer never marked arrival, the unit was called off on the way, or the call was re-dispatched (17% of them belong to event IDs that appear more than once). The call still came in, so these rows stay; arrival time only matters for response times, which this project doesn't measure.
 - **The `(null)` boroughs are a placeholder, not an empty field.** The 304 rows with borough `(null)` mostly also have precinct 0; they can't be placed in a borough, so they can't join the borough × hour table.
 - **Busiest times:** calls peak from 4 pm to 7 pm (843,294 entries in the 16:00 hour) and are lowest around 5 am (287,223 in the 05:00 hour).
 - **By borough:** Brooklyn 4,326,291, Manhattan 3,981,566, Bronx 2,778,306, Queens 2,616,747, Staten Island 533,022.
@@ -193,16 +198,84 @@ There are 13,788,024 distinct event IDs; with the 448,212 extra rows from duplic
 - **Variety:** 516 distinct radio codes, 512 distinct call types, and 78 precincts (plus the 0 and empty values above).
 - **Timestamps run past midnight on Dec 31, 2024** (latest `add_ts` 2025-01-01 00:44:37) because calls from the last evening were added or closed after midnight. This is expected; the incident dates are all within 2023-2024.
 
-### What cleaning will do
+## 4. Clean the data (MapReduce)
 
-Based on these results:
+One Hadoop Streaming job in Python, run by `run_clean.sh`. On the cluster, upload the three files in `cleaning/` into one folder and run:
 
-- Drop `objectid` (always empty) and the duplicate location columns `geo_cd_x`, `geo_cd_y` and `location`
-- Keep one row per `cad_evnt_id`
-- Drop rows whose borough is `(null)`
-- Normalize text to uppercase and combine `incident_date` and `incident_time` into one timestamp, with the hour extracted
-- Flag officer-initiated entries (radio codes starting with "75")
-- Count calls per borough per hour for the team's join
+```bash
+bash run_clean.sh
+```
+
+The raw data is never changed: the job reads one HDFS folder and writes a new one.
+
+```
+/user/tt3124_nyu_edu/
+├── nypd_cfs_raw/      # the 24 original CSVs (input, unchanged)
+└── nypd_cfs_clean/    # output: one cleaned row per call
+```
+
+### How it works
+
+Each step follows from a profiling finding:
+
+| Step | Why |
+|---|---|
+| Drop rows with the wrong column count, a missing or non-numeric event ID, an invalid incident date or time, or a date outside 2023-2024 | Can't be used; profiling found none, but the checks guard against bad input |
+| Drop rows whose borough is not one of the five (the `(null)` rows) | Can't join the borough × hour table (304 rows) |
+| Drop `objectid`, `geo_cd_x`, `geo_cd_y`, `location` and `create_date` | `objectid` is always empty; the others repeat latitude/longitude or `incident_date` |
+| Uppercase and trim all text | `cip_jobs` is mixed case ("Non CIP"); everything else is uppercase |
+| Rewrite timestamps as `YYYY-MM-DD HH:MM:SS` | The raw format (`2023-01-02T05:01:47.000`) isn't what Hive expects |
+| Combine `incident_date` and `incident_time` into `incident_ts`, and extract `incident_hour`, date, hour of day, day of week and month | `incident_hour` is the key the team joins on |
+| Set precinct 0 to empty | 0 is not a real precinct |
+| Add `is_officer_initiated` (1 if the radio code starts with "75") | 37.6% of entries are patrols and inspections, not public calls; flagged rather than deleted so the team can choose |
+| Keep one row per `cad_evnt_id`, the one added first | 441,862 events appear more than once; each call should count once |
+
+The mapper does the row checks and emits each row keyed by its month and `cad_evnt_id`. The job runs 24 reducers, one per month: partitioning on the month alone sends each month to its own reducer, so the output is one file per month. Every copy of a duplicated event is in the same month (checked across all 14,236,236 rows), so all copies meet at one reducer, which keeps the copy with the earliest `add_ts`.
+
+To make month *k* (0 = January 2023, 23 = December 2024) land on reducer *k*, the mapper tags each row with a one-character month code, `chr(72 + k)`. Hadoop's `KeyFieldBasedPartitioner` hashes a one-byte field to its byte value and takes it modulo the number of reducers, and 72 is a multiple of 24, so the code for month *k* goes to reducer *k*. Each reducer also reports which months it received, and `run_clean.sh` checks that every file holds only its own month before renaming it. Rows read, dropped and changed are counted with Hadoop counters (group `NYPD Cleaning`) and saved to `clean_summary.txt`.
+
+Output (`nypd_cfs_clean/`): 24 gzipped files, one per month, `cfs_clean_2023_01.csv.gz` to `cfs_clean_2024_12.csv.gz`, comma-separated, no header, 20 columns. Hadoop names its output `part-00000.gz` to `part-00023.gz`; the script renames them after checking each one's month. Gzipping makes the output about 7 times smaller (January: 175 MB to 26 MB), and Hive and Hadoop read `.gz` files directly.
+
+| # | Column | Example |
+|---|---|---|
+| 1 | `cad_evnt_id` | 91250748 |
+| 2 | `incident_ts` | 2023-01-01 00:00:40 |
+| 3 | `incident_hour` | 2023-01-01 00:00:00 |
+| 4 | `incident_date` | 2023-01-01 |
+| 5 | `hour_of_day` | 0 |
+| 6 | `day_of_week` | Sunday |
+| 7 | `month` | 2023-01 |
+| 8 | `borough` | BRONX |
+| 9 | `precinct` | 41 |
+| 10 | `patrol_borough` | PATROL BORO BRONX |
+| 11 | `radio_code` | 75S |
+| 12 | `call_type` | STATION INSPECTION BY TRANSIT BUREAU PERSONNEL |
+| 13 | `priority` | NON CIP |
+| 14 | `is_officer_initiated` | 1 |
+| 15 | `add_ts` | 2023-01-01 00:00:40 |
+| 16 | `disp_ts` | 2023-01-01 00:00:40 |
+| 17 | `arrivd_ts` | 2023-01-01 00:00:40 |
+| 18 | `closng_ts` | 2023-01-01 00:24:04 |
+| 19 | `latitude` | 40.825471963000041 |
+| 20 | `longitude` | -73.892940736999947 |
+
+Empty fields mean the value is missing (for example `arrivd_ts` when no arrival was recorded).
+
+### Tested on January 2023
+
+Before running on the cluster, the job was tested on `cfs_2023_01.csv`, split into pieces and sorted the way Hadoop does, plus four deliberately bad rows. The monthly split was then tested on January and February together: each month went to its own reducer and its own file (January 627,030 rows, February 562,590).
+
+| | Rows |
+|---|---|
+| Read | 646,307 (+4 bad test rows) |
+| Dropped: no valid borough | 8 |
+| Dropped: the 4 bad test rows | 1 each, for the expected reason |
+| Dropped: duplicate event ID | 19,269 |
+| Written | 627,030 |
+
+627,030 matches an independent count of distinct event IDs with a valid borough.
+
+Counting calls per borough per hour, for the join with the team's other datasets, is left for the analysis phase (a Hive `GROUP BY borough, incident_hour` on the cleaned table).
 
 ## Status
 
