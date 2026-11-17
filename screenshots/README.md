@@ -20,3 +20,14 @@ Running the profiling MapReduce job (`profiling/run_profile.sh`) on all 14,236,2
 |---|---|
 | `01_profile_job_progress.png` | Uploading the three profiling files, then the Hadoop Streaming job: 24 input files, 48 splits, map 0% to 100%, reduce to 100%, completed successfully |
 | `02_profile_job_counters_and_results.png` | Job counters (50 map tasks, 1 reduce task) and the summary: 14,236,236 rows, 0 wrong column counts, 13,788,024 distinct event IDs, 441,862 IDs appearing more than once |
+
+## cleaning/
+
+Running the cleaning MapReduce job (`cleaning/run_clean.sh`) on all 14,236,236 rows.
+
+| File | Shows |
+|---|---|
+| `01_clean_job_progress.png` | `bash run_clean.sh`: 24 input files, 48 splits, map 0% to 100%, reduce 0% to 100%, completed successfully |
+| `02_clean_job_counters.png` | Job counters (50 map tasks, 25 reduce tasks including one backup) and the cleaning counters: 14,236,236 rows read, 304 dropped for no valid borough, 448,207 duplicate event IDs removed |
+| `03_clean_rows_per_month_and_files.png` | Rows written per month (2023-01 to 2024-12) and the 24 output files after renaming, `cfs_clean_2023_01.csv.gz` to `cfs_clean_2024_12.csv.gz` |
+| `04_clean_summary_and_sample_rows.png` | The summary: 13,787,725 rows written, 498.3 MB output, and the first five cleaned rows |
