@@ -31,3 +31,13 @@ Running the cleaning MapReduce job (`cleaning/run_clean.sh`) on all 14,236,236 r
 | `02_clean_job_counters.png` | Job counters (50 map tasks, 25 reduce tasks including one backup) and the cleaning counters: 14,236,236 rows read, 304 dropped for no valid borough, 448,207 duplicate event IDs removed |
 | `03_clean_rows_per_month_and_files.png` | Rows written per month (2023-01 to 2024-12) and the 24 output files after renaming, `cfs_clean_2023_01.csv.gz` to `cfs_clean_2024_12.csv.gz` |
 | `04_clean_summary_and_sample_rows.png` | The summary: 13,787,725 rows written, 498.3 MB output, and the first five cleaned rows |
+
+## export/
+
+Copying the cleaned files out of HDFS so they can be downloaded (the reverse of ingestion).
+
+| File | Shows |
+|---|---|
+| `01_distcp_to_bucket_progress.png` | `hadoop distcp` from `/user/tt3124_nyu_edu/nypd_cfs_clean` to `gs://nyu-dataproc-hdfs-ingest/tt3124_nypd_cfs_clean`: 26 paths, 24 splits, map 0% to 100%, completed successfully |
+| `02_distcp_to_bucket_counters.png` | Job counters: 25 files copied (24 monthly files and `_SUCCESS`), 522,473,353 bytes copied out of 522,473,353 expected |
+| `03_bundle_into_tar.png` | Bundling the 24 files into one `tt3124_nypd_cfs_clean.tar` and uploading it to the bucket, since the Cloud Console downloads only one file at a time |
