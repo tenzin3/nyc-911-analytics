@@ -1,8 +1,20 @@
 # nyc-911-analytics
 
-My data source for the Group 3 project in CSCI-GA.2436 Real-time and Big Data Analytics (NYU, Fall 2026): **NYPD Calls for Service**, cleaned with MapReduce and aggregated to a borough × hour key so it can be joined with the team's weather and transportation data.
+My data source for the Group 3 project in CSCI-GA.2436 Real-time and Big Data Analytics (NYU, Fall 2026): **NYPD Calls for Service**, profiled and cleaned with MapReduce so it can be joined with the team's weather and transportation data on borough and hour.
 
 **Team project:** *Weather, 911 Calls and Transportation in NYC*, asking how weather conditions affect the way New Yorkers travel and how often they call 911.
+
+## Checkpoint submission (due Nov 20, 2026)
+
+| Required | Where |
+|---|---|
+| MapReduce code for profiling | `profiling/profile_mapper.py`, `profiling/profile_reducer.py` (Python, Hadoop Streaming) |
+| MapReduce code for cleaning | `cleaning/clean_mapper.py`, `cleaning/clean_reducer.py` (Python, Hadoop Streaming) |
+| Shell commands for ingestion | `ingestion/download_nypd_cfs.sh`, and the HDFS commands in section 2 below |
+| Shell commands for profiling and cleaning | `profiling/run_profile.sh`, `cleaning/run_clean.sh` |
+| PDF report | `report/report.pdf` |
+| Snippet of the dataset | `data/sample/cfs_2023_01_first100.csv` (raw, 100 rows), and raw and cleaned rows in the report |
+| Evidence of each run | `screenshots/`, `results/` |
 
 | Dataset | Owner |
 |---|---|
@@ -70,7 +82,7 @@ Sample row:
 
 A longer snippet, the header plus the first 100 rows of January 2023, is in `data/sample/cfs_2023_01_first100.csv` (40 KB).
 
-Every field is quoted, and `typ_desc` can contain commas, so the MapReduce jobs need a quote-aware CSV parser rather than a plain split on commas.
+Every field is quoted, so the MapReduce jobs parse rows with a quote-aware CSV reader rather than a plain split on commas. (Profiling found no commas inside any value, but the reader would handle them.)
 
 ## Repository layout
 
@@ -92,9 +104,13 @@ nyc-911-analytics/
 │   └── cleaning/
 │       ├── clean_job.log        # full Hadoop output of the cleaning job
 │       └── clean_summary.txt    # counts from the cleaning job
+├── report/
+│   └── report.pdf               # checkpoint report
 ├── screenshots/                 # evidence of each step, run on Dataproc
-│   ├── ingestion/
-│   └── profiling/
+│   ├── ingestion/               # data into HDFS
+│   ├── profiling/               # profiling job
+│   ├── cleaning/                # cleaning job
+│   └── export/                  # cleaned data out of HDFS
 ├── data/
 │   ├── cleaned/
 │   │   └── tt3124_nypd_cfs_clean.tar  # the 24 cleaned monthly files (522 MB), in Git LFS
@@ -312,7 +328,35 @@ Run on Dataproc: 24 input files, 48 splits, 50 map tasks and 24 reduce tasks (on
 
 Output: 24 files, 498.3 MB gzipped (from 4.8 GB raw), in `/user/tt3124_nyu_edu/nypd_cfs_clean`.
 
-A copy is kept in this repo as `data/cleaned/tt3124_nypd_cfs_clean.tar` (Git LFS): the 24 `cfs_clean_YYYY_MM.csv.gz` files bundled into one file. It was copied out of HDFS with `hadoop distcp` to the ingest bucket and downloaded (see `screenshots/export/`). After downloading, all 24 files were checked: 13,787,725 rows in total, every month's count matching the job, 20 columns in every row, and no duplicate event IDs. To unpack:
+What the cleaned data contains:
+
+| | Rows | Share |
+|---|---|---|
+| Public calls (`is_officer_initiated` = 0) | 8,441,173 | 61.2% |
+| Officer-initiated entries (`is_officer_initiated` = 1) | 5,346,552 | 38.8% |
+| Brooklyn | 4,203,560 | 30.5% |
+| Manhattan | 3,868,633 | 28.1% |
+| Bronx | 2,675,126 | 19.4% |
+| Queens | 2,527,549 | 18.3% |
+| Staten Island | 512,857 | 3.7% |
+
+The officer-initiated share is higher than in the raw data (37.6%) because the duplicates removed were mostly public calls dispatched more than once.
+
+## 5. Export the cleaned data
+
+To keep a copy outside the cluster, the cleaned files were copied from HDFS to the ingest bucket and bundled into one file, since the Cloud Console downloads only one file at a time:
+
+```bash
+hadoop distcp /user/tt3124_nyu_edu/nypd_cfs_clean gs://nyu-dataproc-hdfs-ingest/tt3124_nypd_cfs_clean
+
+cd ~
+hdfs dfs -get /user/tt3124_nyu_edu/nypd_cfs_clean nypd_cfs_clean
+cd nypd_cfs_clean && tar -cf ../nypd_cfs_clean.tar *.csv.gz && cd ..
+hadoop fs -put nypd_cfs_clean.tar gs://nyu-dataproc-hdfs-ingest/tt3124_nypd_cfs_clean.tar
+rm -r nypd_cfs_clean nypd_cfs_clean.tar
+```
+
+`distcp` copied 25 files (24 monthly files and `_SUCCESS`), 522,473,353 bytes out of 522,473,353 expected. The `.tar` was downloaded from the bucket and is kept in this repo as `data/cleaned/tt3124_nypd_cfs_clean.tar` (Git LFS). After downloading, all 24 files were checked: 13,787,725 rows in total, every month's count matching the job, 20 columns in every row, and no duplicate event IDs. See `screenshots/export/`. To unpack:
 
 ```bash
 tar -xf data/cleaned/tt3124_nypd_cfs_clean.tar -C data/cleaned
@@ -325,4 +369,4 @@ tar -xf data/cleaned/tt3124_nypd_cfs_clean.tar -C data/cleaned
 - [x] Load into HDFS on Dataproc
 - [x] MapReduce profiling job
 - [x] MapReduce cleaning job
-- [ ] Checkpoint report (due Nov 20, 2026)
+- [x] Checkpoint report (`report/report.pdf`, due Nov 20, 2026)
