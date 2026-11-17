@@ -7,7 +7,8 @@
 #
 # Input:  /user/tt3124_nyu_edu/nypd_cfs_raw      (24 raw monthly CSVs)
 # Output: /user/tt3124_nyu_edu/nypd_cfs_profile  (in HDFS)
-#         profile_results.tsv                    (local copy of the results)
+#         profile_results.tsv                    (local copy; in the repo it is
+#                                                 kept in results/profiling/)
 
 cd "$(dirname "$0")" || exit 1
 
