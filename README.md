@@ -89,7 +89,9 @@ nyc-911-analytics/
 ├── results/
 │   ├── profiling/
 │   │   └── profile_results.tsv  # output of the profiling job
-│   └── cleaning/                # summary from the cleaning job
+│   └── cleaning/
+│       ├── clean_job.log        # full Hadoop output of the cleaning job
+│       └── clean_summary.txt    # counts from the cleaning job
 ├── screenshots/                 # evidence of each step, run on Dataproc
 │   ├── ingestion/
 │   └── profiling/
@@ -277,11 +279,42 @@ Before running on the cluster, the job was tested on `cfs_2023_01.csv`, split in
 
 Counting calls per borough per hour, for the join with the team's other datasets, is left for the analysis phase (a Hive `GROUP BY borough, incident_hour` on the cleaned table).
 
+### Results on the full dataset
+
+Run on Dataproc: 24 input files, 48 splits, 50 map tasks and 24 reduce tasks (one per month), finished in about two minutes. Counts are in `results/cleaning/clean_summary.txt`, and the full Hadoop output is in `results/cleaning/clean_job.log`.
+
+| | Rows |
+|---|---|
+| Read | 14,236,236 |
+| Dropped: no valid borough (`(null)`) | 304 |
+| Dropped: duplicate event ID | 448,207 |
+| Dropped: wrong column count, bad ID, invalid or out-of-range date or time | 0 |
+| **Written** | **13,787,725** |
+
+14,236,236 − 304 − 448,207 = 13,787,725, and the 24 monthly files add up to the same total. Duplicates removed (448,207) is 5 fewer than the 448,212 extra rows found in profiling, because 5 of the dropped `(null)` borough rows were themselves duplicate copies.
+
+| Month | Rows | Month | Rows |
+|---|---|---|---|
+| 2023-01 | 627,030 | 2024-01 | 561,741 |
+| 2023-02 | 562,590 | 2024-02 | 552,547 |
+| 2023-03 | 617,148 | 2024-03 | 636,552 |
+| 2023-04 | 557,178 | 2024-04 | 583,547 |
+| 2023-05 | 598,967 | 2024-05 | 608,754 |
+| 2023-06 | 557,010 | 2024-06 | 588,926 |
+| 2023-07 | 555,754 | 2024-07 | 582,781 |
+| 2023-08 | 539,607 | 2024-08 | 582,912 |
+| 2023-09 | 532,920 | 2024-09 | 568,578 |
+| 2023-10 | 578,278 | 2024-10 | 612,378 |
+| 2023-11 | 542,030 | 2024-11 | 553,978 |
+| 2023-12 | 547,400 | 2024-12 | 539,119 |
+
+Output: 24 files, 498.3 MB gzipped (from 4.8 GB raw), in `/user/tt3124_nyu_edu/nypd_cfs_clean`.
+
 ## Status
 
 - [x] Find the dataset
 - [x] Download 2023-2024 (14,236,236 rows)
 - [x] Load into HDFS on Dataproc
 - [x] MapReduce profiling job
-- [ ] MapReduce cleaning job
+- [x] MapReduce cleaning job
 - [ ] Checkpoint report (due Nov 20, 2026)

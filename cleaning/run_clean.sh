@@ -92,7 +92,7 @@ hdfs dfs -ls -h "$CLEAN"
   hdfs dfs -du -s -h "$CLEAN"
   echo
   echo "== First 5 cleaned rows =="
-  hdfs dfs -text "$CLEAN"/cfs_clean_2023_01.csv.gz | head -5
+  hdfs dfs -text "$CLEAN"/cfs_clean_2023_01.csv.gz 2>/dev/null | head -5
 } > clean_summary.txt
 
 echo

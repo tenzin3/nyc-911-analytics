@@ -1,0 +1,155 @@
+packageJobJar: [] [/usr/lib/hadoop/hadoop-streaming-3.3.6.jar] /tmp/streamjob16865371690710909597.jar tmpDir=null
+2026-11-17 19:55:49,142 INFO client.DefaultNoHARMFailoverProxyProvider: Connecting to ResourceManager at nyu-dataproc-m.c.hpc-dataproc-19b8.internal./192.168.1.70:8032
+2026-11-17 19:55:49,337 INFO client.AHSProxy: Connecting to Application History server at nyu-dataproc-m.c.hpc-dataproc-19b8.internal./192.168.1.70:10200
+2026-11-17 19:55:50,077 INFO client.DefaultNoHARMFailoverProxyProvider: Connecting to ResourceManager at nyu-dataproc-m.c.hpc-dataproc-19b8.internal./192.168.1.70:8032
+2026-11-17 19:55:50,078 INFO client.AHSProxy: Connecting to Application History server at nyu-dataproc-m.c.hpc-dataproc-19b8.internal./192.168.1.70:10200
+2026-11-17 19:55:50,395 INFO mapreduce.JobResourceUploader: Disabling Erasure Coding for path: /tmp/hadoop-yarn/staging/tt3124_nyu_edu/.staging/job_1788279331828_8194
+2026-11-17 19:55:50,854 INFO mapred.FileInputFormat: Total input files to process : 24
+2026-11-17 19:55:50,910 INFO mapreduce.JobSubmitter: number of splits:48
+2026-11-17 19:55:51,100 INFO mapreduce.JobSubmitter: Submitting tokens for job: job_1788279331828_8194
+2026-11-17 19:55:51,101 INFO mapreduce.JobSubmitter: Executing with tokens: []
+2026-11-17 19:55:51,314 INFO conf.Configuration: resource-types.xml not found
+2026-11-17 19:55:51,315 INFO resource.ResourceUtils: Unable to find 'resource-types.xml'.
+2026-11-17 19:55:51,408 INFO impl.YarnClientImpl: Submitted application application_1788279331828_8194
+2026-11-17 19:55:51,446 INFO mapreduce.Job: The url to track the job: http://nyu-dataproc-m.c.hpc-dataproc-19b8.internal.:8088/proxy/application_1788279331828_8194/
+2026-11-17 19:55:51,447 INFO mapreduce.Job: Running job: job_1788279331828_8194
+2026-11-17 19:56:00,566 INFO mapreduce.Job: Job job_1788279331828_8194 running in uber mode : false
+2026-11-17 19:56:00,567 INFO mapreduce.Job:  map 0% reduce 0%
+2026-11-17 19:56:24,749 INFO mapreduce.Job:  map 1% reduce 0%
+2026-11-17 19:56:25,773 INFO mapreduce.Job:  map 17% reduce 0%
+2026-11-17 19:56:26,780 INFO mapreduce.Job:  map 19% reduce 0%
+2026-11-17 19:56:28,792 INFO mapreduce.Job:  map 21% reduce 0%
+2026-11-17 19:56:29,801 INFO mapreduce.Job:  map 22% reduce 0%
+2026-11-17 19:56:31,814 INFO mapreduce.Job:  map 23% reduce 0%
+2026-11-17 19:56:32,820 INFO mapreduce.Job:  map 28% reduce 0%
+2026-11-17 19:56:33,828 INFO mapreduce.Job:  map 42% reduce 0%
+2026-11-17 19:56:34,833 INFO mapreduce.Job:  map 43% reduce 0%
+2026-11-17 19:56:37,855 INFO mapreduce.Job:  map 47% reduce 0%
+2026-11-17 19:56:38,861 INFO mapreduce.Job:  map 54% reduce 0%
+2026-11-17 19:56:39,869 INFO mapreduce.Job:  map 58% reduce 0%
+2026-11-17 19:56:43,891 INFO mapreduce.Job:  map 60% reduce 0%
+2026-11-17 19:56:45,907 INFO mapreduce.Job:  map 64% reduce 0%
+2026-11-17 19:56:46,913 INFO mapreduce.Job:  map 71% reduce 0%
+2026-11-17 19:56:47,918 INFO mapreduce.Job:  map 75% reduce 0%
+2026-11-17 19:56:48,941 INFO mapreduce.Job:  map 81% reduce 0%
+2026-11-17 19:56:49,948 INFO mapreduce.Job:  map 83% reduce 0%
+2026-11-17 19:57:08,077 INFO mapreduce.Job:  map 85% reduce 0%
+2026-11-17 19:57:09,085 INFO mapreduce.Job:  map 91% reduce 0%
+2026-11-17 19:57:10,090 INFO mapreduce.Job:  map 92% reduce 0%
+2026-11-17 19:57:16,122 INFO mapreduce.Job:  map 93% reduce 0%
+2026-11-17 19:57:17,130 INFO mapreduce.Job:  map 98% reduce 0%
+2026-11-17 19:57:18,135 INFO mapreduce.Job:  map 100% reduce 0%
+2026-11-17 19:57:37,236 INFO mapreduce.Job:  map 100% reduce 4%
+2026-11-17 19:57:39,245 INFO mapreduce.Job:  map 100% reduce 13%
+2026-11-17 19:57:40,250 INFO mapreduce.Job:  map 100% reduce 28%
+2026-11-17 19:57:43,263 INFO mapreduce.Job:  map 100% reduce 32%
+2026-11-17 19:57:45,272 INFO mapreduce.Job:  map 100% reduce 36%
+2026-11-17 19:57:46,277 INFO mapreduce.Job:  map 100% reduce 40%
+2026-11-17 19:57:47,282 INFO mapreduce.Job:  map 100% reduce 47%
+2026-11-17 19:57:48,286 INFO mapreduce.Job:  map 100% reduce 55%
+2026-11-17 19:57:49,291 INFO mapreduce.Job:  map 100% reduce 59%
+2026-11-17 19:57:50,295 INFO mapreduce.Job:  map 100% reduce 71%
+2026-11-17 19:57:51,300 INFO mapreduce.Job:  map 100% reduce 83%
+2026-11-17 19:57:52,304 INFO mapreduce.Job:  map 100% reduce 87%
+2026-11-17 19:57:53,308 INFO mapreduce.Job:  map 100% reduce 92%
+2026-11-17 19:57:54,312 INFO mapreduce.Job:  map 100% reduce 98%
+2026-11-17 19:57:55,317 INFO mapreduce.Job:  map 100% reduce 100%
+2026-11-17 19:57:57,332 INFO mapreduce.Job: Job job_1788279331828_8194 completed successfully
+2026-11-17 19:57:57,439 INFO mapreduce.Job: Counters: 88
+	File System Counters
+		FILE: Number of bytes read=4372572137
+		FILE: Number of bytes written=8766360254
+		FILE: Number of read operations=0
+		FILE: Number of large read operations=0
+		FILE: Number of write operations=0
+		HDFS: Number of bytes read=5126558891
+		HDFS: Number of bytes written=522473353
+		HDFS: Number of read operations=264
+		HDFS: Number of large read operations=0
+		HDFS: Number of write operations=72
+		HDFS: Number of bytes read erasure-coded=0
+	Job Counters 
+		Killed map tasks=2
+		Killed reduce tasks=1
+		Launched map tasks=50
+		Launched reduce tasks=25
+		Data-local map tasks=28
+		Rack-local map tasks=22
+		Total time spent by all maps in occupied slots (ms)=6343140
+		Total time spent by all reduces in occupied slots (ms)=2598484
+		Total time spent by all map tasks (ms)=1585785
+		Total time spent by all reduce tasks (ms)=649621
+		Total vcore-milliseconds taken by all map tasks=1585785
+		Total vcore-milliseconds taken by all reduce tasks=649621
+		Total megabyte-milliseconds taken by all map tasks=6495375360
+		Total megabyte-milliseconds taken by all reduce tasks=2660847616
+	Map-Reduce Framework
+		Map input records=14236260
+		Map output records=14235932
+		Map output bytes=4315896627
+		Map output materialized bytes=4372578905
+		Input split bytes=5856
+		Combine input records=0
+		Combine output records=0
+		Reduce input groups=13787725
+		Reduce shuffle bytes=4372578905
+		Reduce input records=14235932
+		Reduce output records=13787725
+		Spilled Records=28471864
+		Shuffled Maps =1152
+		Failed Shuffles=0
+		Merged Map outputs=1152
+		GC time elapsed (ms)=14307
+		CPU time spent (ms)=1122600
+		Physical memory (bytes) snapshot=49230893056
+		Virtual memory (bytes) snapshot=359902351360
+		Total committed heap usage (bytes)=71197261824
+		Peak Map Physical memory (bytes)=796037120
+		Peak Map Virtual memory (bytes)=5089009664
+		Peak Reduce Physical memory (bytes)=722497536
+		Peak Reduce Virtual memory (bytes)=5105475584
+	NYPD Cleaning
+		changed: priority uppercased=14235932
+		dropped: duplicate event ID=448207
+		dropped: no valid borough=304
+		rows passed to reducer=14235932
+		rows read=14236236
+		rows written=13787725
+		skipped: header lines=24
+	NYPD Rows per month
+		2023-01=627030
+		2023-02=562590
+		2023-03=617148
+		2023-04=557178
+		2023-05=598967
+		2023-06=557010
+		2023-07=555754
+		2023-08=539607
+		2023-09=532920
+		2023-10=578278
+		2023-11=542030
+		2023-12=547400
+		2024-01=561741
+		2024-02=552547
+		2024-03=636552
+		2024-04=583547
+		2024-05=608754
+		2024-06=588926
+		2024-07=582781
+		2024-08=582912
+		2024-09=568578
+		2024-10=612378
+		2024-11=553978
+		2024-12=539119
+	Shuffle Errors
+		BAD_ID=0
+		CONNECTION=0
+		IO_ERROR=0
+		WRONG_LENGTH=0
+		WRONG_MAP=0
+		WRONG_REDUCE=0
+	File Input Format Counters 
+		Bytes Read=5126553035
+	File Output Format Counters 
+		Bytes Written=522473353
+2026-11-17 19:57:57,439 INFO streaming.StreamJob: Output directory: /user/tt3124_nyu_edu/nypd_cfs_clean
