@@ -4,7 +4,7 @@ Evidence of each step, run on NYU Dataproc. Files are numbered in the order the 
 
 ## ingestion/
 
-Copying the 24 monthly CSVs from the NYU ingest bucket into HDFS (`ingestion/hdfs_ingest.sh`).
+Copying the 24 monthly CSVs from the NYU ingest bucket into HDFS (`hadoop distcp`).
 
 | File | Shows |
 |---|---|
