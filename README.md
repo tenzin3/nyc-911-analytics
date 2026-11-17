@@ -42,7 +42,7 @@ The CSV has 20 columns:
 
 | Column | Description |
 |---|---|
-| `objectid` | Row ID (empty in the rows checked so far) |
+| `objectid` | Row ID (empty in every row) |
 | `cad_evnt_id` | ICAD event ID |
 | `create_date` | Date the entry was created |
 | `incident_date` | Date of the incident |
@@ -75,15 +75,24 @@ Every field is quoted, and `typ_desc` can contain commas, so the MapReduce jobs 
 ```
 nyc-911-analytics/
 ├── ingestion/
-│   └── download_nypd_cfs.sh   # downloads 2023-2024 month by month
-├── data/                      # not committed (see .gitignore)
-│   └── raw/                   # cfs_YYYY_MM.csv + download_log.txt
+│   └── download_nypd_cfs.sh     # downloads 2023-2024 month by month
+├── profiling/
+│   ├── profile_mapper.py        # MapReduce profiling job (Hadoop Streaming)
+│   ├── profile_reducer.py
+│   └── run_profile.sh           # submits the job on Dataproc
+├── results/
+│   └── profiling/
+│       └── profile_results.tsv  # output of the profiling job
+├── screenshots/                 # evidence of each step, run on Dataproc
+│   ├── ingestion/
+│   └── profiling/
+├── data/
+│   ├── lfs/                     # the 24 CSVs gzipped (847 MB), in Git LFS
+│   └── raw/                     # the 24 CSVs uncompressed (4.9 GB), not committed
 └── README.md
 ```
 
-To come: `profiling/` and `cleaning/` (MapReduce jobs), HDFS ingestion commands, and the checkpoint report.
-
-## Download the data
+## 1. Download the data
 
 ```bash
 cd nyc-911-analytics
@@ -94,13 +103,108 @@ The script downloads one month at a time through the NYC Open Data API into `dat
 
 Optional, to avoid API throttling: create a free app token on NYC Open Data and run `export SOCRATA_APP_TOKEN=your_token` first.
 
-The data folder is in `.gitignore`: the files are too large for GitHub, and the assignment asks for a snippet rather than the whole dataset.
+The uncompressed files are too large for GitHub (each month is about 200 MB, over GitHub's 100 MB file limit), so `data/raw/` is not committed. A gzipped copy of each month (about 35 MB each, 847 MB in total) is kept in `data/lfs/` through Git LFS. To clone only the code without downloading the data:
+
+```bash
+GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/tenzin3/nyc-911-analytics.git
+```
+
+## 2. Load into HDFS
+
+1. Upload the 24 CSVs to the NYU Data Ingest Console (https://dataproc.hpc.nyu.edu/ingest), into the folder `tt3124_nypd_cfs` in the `nyu-dataproc-hdfs-ingest` bucket. Files there are deleted after 2 days.
+2. On the cluster (https://dataproc.hpc.nyu.edu/ssh), copy them into HDFS and check:
+
+```bash
+hadoop distcp gs://nyu-dataproc-hdfs-ingest/tt3124_nypd_cfs /user/tt3124_nyu_edu/nypd_cfs_raw
+hdfs dfs -ls -h /user/tt3124_nyu_edu/nypd_cfs_raw
+hdfs dfs -du -s -h /user/tt3124_nyu_edu/nypd_cfs_raw
+```
+
+Result: 24 files, 5,126,454,731 bytes copied out of 5,126,454,731 expected (4.8 GB as HDFS reports it). See `screenshots/ingestion/`.
+
+## 3. Profile the data (MapReduce)
+
+The profiling job is written in Python for Hadoop Streaming. On the cluster, upload the three files in `profiling/` into one folder and run:
+
+```bash
+bash run_profile.sh
+```
+
+It reads `/user/tt3124_nyu_edu/nypd_cfs_raw`, writes to `/user/tt3124_nyu_edu/nypd_cfs_profile` in HDFS, and saves a local copy as `profile_results.tsv` (kept in this repo under `results/profiling/`).
+
+How it works:
+
+- **Mapper:** parses each row with a quote-aware CSV reader and checks every column: empty values, badly formatted dates, times and timestamps, values out of range, timestamps out of order, text needing normalization, and how often each borough, precinct, radio code, call type and priority occurs. It adds up these counts in memory and emits the totals once at the end (in-mapper combining), so the shuffle stays small. It also emits every event ID so duplicates can be found.
+- **Reducer:** sums the counts, takes minimums and maximums, and counts how often each event ID occurs. It runs as a single reducer so the duplicate summary covers all rows.
+
+Run on the full dataset: 24 input files, 48 splits, 50 map tasks and 1 reduce task, finished in under two minutes. Output: 1,251 lines. See `screenshots/profiling/`.
+
+### Profiling results
+
+All counts are out of **14,236,236 rows**.
+
+**Clean, no action needed:**
+
+| Check | Result |
+|---|---|
+| Rows with the wrong number of columns | 0 |
+| Badly formatted `incident_date`, `incident_time`, `create_date` or any timestamp | 0 |
+| Incident dates outside 2023-2024 | 0 (range 2023-01-01 to 2024-12-31) |
+| Missing or non-numeric `cad_evnt_id` | 0 |
+| Missing `incident_date`, `incident_time`, `boro_nm`, `radio_code`, `typ_desc`, `cip_jobs` | 0 |
+| Missing or non-numeric latitude, longitude or state plane coordinates | 0 |
+| Locations outside NYC | 0 (latitude 40.4986 to 40.9141, longitude -74.2547 to -73.7003) |
+| Text fields with leading or trailing spaces | 0 |
+| Rows per month | Matches the download for all 24 months |
+
+**Problems found:**
+
+| Finding | Rows | Share |
+|---|---|---|
+| `objectid` is empty | 14,236,236 | 100% |
+| Event IDs that appear more than once | 441,862 IDs, 448,212 extra rows | 3.15% |
+| No arrival time (`arrivd_ts` empty) | 3,013,829 | 21.2% |
+| `create_date` differs from `incident_date` | 1,944 | 0.01% |
+| Closed before added (`closng_ts` < `add_ts`) | 388 | <0.01% |
+| Borough and patrol borough are the text `(null)` | 304 | <0.01% |
+| Precinct is 0 | 298 | <0.01% |
+| Arrived before dispatched (`arrivd_ts` < `disp_ts`) | 83 | <0.01% |
+| Dispatched before added (`disp_ts` < `add_ts`) | 79 | <0.01% |
+| No closing time (`closng_ts` empty) | 71 | <0.01% |
+| Precinct empty | 6 | <0.01% |
+| No dispatch time (`disp_ts` empty) | 1 | <0.01% |
+| `cip_jobs` in mixed case ("Non CIP", "Critical") | all rows | 100% |
+
+There are 13,788,024 distinct event IDs; with the 448,212 extra rows from duplicates, that accounts for all 14,236,236 rows.
+
+### Observations
+
+- **Duplicate event IDs are not copies.** The repeated rows share the event, location, call type and incident time, but have different dispatch, arrival or closing times. They look like the same call being dispatched or closed more than once, so for counting calls each event ID should count once.
+- **37.6% of entries are not calls from the public.** 5,347,737 rows have radio codes starting with "75", which by their descriptions are entries officers create themselves: patrols, inspections and visits. The largest are "VISIBILITY PATROL: DIRECTED" (1,555,781), "STATION INSPECTION BY TRANSIT BUREAU PERSONNEL" (1,310,865), "TRAIN RUN/MOBILE ORDER MAINTENANCE SWEEP" (591,751) and "TRANSIT PATROL/INSPECTION BY NON-TRANSIT BUREAU PERSONNEL" (523,554). Patrol schedules don't respond to weather the way public calls do, so these need to be separated before measuring weather effects on 911 volume. (To be confirmed against the data dictionary.)
+- **Missing arrival times are expected.** 21.2% of entries have no arrival time, which fits entries where no unit was sent or arrived. The call itself still happened, so these rows stay.
+- **The `(null)` boroughs are a placeholder, not an empty field.** The 304 rows with borough `(null)` mostly also have precinct 0; they can't be placed in a borough, so they can't join the borough × hour table.
+- **Busiest times:** calls peak from 4 pm to 7 pm (843,294 entries in the 16:00 hour) and are lowest around 5 am (287,223 in the 05:00 hour).
+- **By borough:** Brooklyn 4,326,291, Manhattan 3,981,566, Bronx 2,778,306, Queens 2,616,747, Staten Island 533,022.
+- **By priority (`cip_jobs`):** Non CIP 13,205,501, Non Critical 526,953, Serious 327,899, Critical 175,883.
+- **Variety:** 516 distinct radio codes, 512 distinct call types, and 78 precincts (plus the 0 and empty values above).
+- **Timestamps run past midnight on Dec 31, 2024** (latest `add_ts` 2025-01-01 00:44:37) because calls from the last evening were added or closed after midnight. This is expected; the incident dates are all within 2023-2024.
+
+### What cleaning will do
+
+Based on these results:
+
+- Drop `objectid` (always empty) and the duplicate location columns `geo_cd_x`, `geo_cd_y` and `location`
+- Keep one row per `cad_evnt_id`
+- Drop rows whose borough is `(null)`
+- Normalize text to uppercase and combine `incident_date` and `incident_time` into one timestamp, with the hour extracted
+- Flag officer-initiated entries (radio codes starting with "75")
+- Count calls per borough per hour for the team's join
 
 ## Status
 
 - [x] Find the dataset
 - [x] Download 2023-2024 (14,236,236 rows)
-- [ ] Load into HDFS on Dataproc
-- [ ] MapReduce profiling job
+- [x] Load into HDFS on Dataproc
+- [x] MapReduce profiling job
 - [ ] MapReduce cleaning job
 - [ ] Checkpoint report (due Nov 20, 2026)
