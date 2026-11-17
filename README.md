@@ -68,6 +68,8 @@ Sample row:
 ,"91276372","2023-01-02T00:00:00.000","2023-01-02T00:00:00.000","05:00:55","40","BRONX","PATROL BORO BRONX","1007976","232906","11C4","ALARMS: COMMERCIAL/BURGLARY","Non CIP","2023-01-02T05:01:47.000","2023-01-02T05:05:49.000","2023-01-02T05:16:06.000","2023-01-02T05:33:53.000","40.805925436000052","-73.914298569999971","POINT (-73.91429856999997 40.80592543600005)"
 ```
 
+A longer snippet, the header plus the first 100 rows of January 2023, is in `data/sample/cfs_2023_01_first100.csv` (40 KB).
+
 Every field is quoted, and `typ_desc` can contain commas, so the MapReduce jobs need a quote-aware CSV parser rather than a plain split on commas.
 
 ## Repository layout
@@ -87,6 +89,8 @@ nyc-911-analytics/
 │   ├── ingestion/
 │   └── profiling/
 ├── data/
+│   ├── sample/
+│   │   └── cfs_2023_01_first100.csv  # snippet: header + first 100 rows of January 2023
 │   ├── lfs/                     # the 24 CSVs gzipped (847 MB), in Git LFS
 │   └── raw/                     # the 24 CSVs uncompressed (4.9 GB), not committed
 └── README.md
