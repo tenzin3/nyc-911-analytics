@@ -96,6 +96,8 @@ nyc-911-analytics/
 │   ├── ingestion/
 │   └── profiling/
 ├── data/
+│   ├── cleaned/
+│   │   └── tt3124_nypd_cfs_clean.tar  # the 24 cleaned monthly files (522 MB), in Git LFS
 │   ├── sample/
 │   │   └── cfs_2023_01_first100.csv  # snippet: header + first 100 rows of January 2023
 │   ├── lfs/                     # the 24 CSVs gzipped (847 MB), in Git LFS
@@ -309,6 +311,12 @@ Run on Dataproc: 24 input files, 48 splits, 50 map tasks and 24 reduce tasks (on
 | 2023-12 | 547,400 | 2024-12 | 539,119 |
 
 Output: 24 files, 498.3 MB gzipped (from 4.8 GB raw), in `/user/tt3124_nyu_edu/nypd_cfs_clean`.
+
+A copy is kept in this repo as `data/cleaned/tt3124_nypd_cfs_clean.tar` (Git LFS): the 24 `cfs_clean_YYYY_MM.csv.gz` files bundled into one file. It was copied out of HDFS with `hadoop distcp` to the ingest bucket and downloaded (see `screenshots/export/`). After downloading, all 24 files were checked: 13,787,725 rows in total, every month's count matching the job, 20 columns in every row, and no duplicate event IDs. To unpack:
+
+```bash
+tar -xf data/cleaned/tt3124_nypd_cfs_clean.tar -C data/cleaned
+```
 
 ## Status
 
